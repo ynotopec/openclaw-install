@@ -85,6 +85,18 @@ parse_env_value() {
   ' "${REQUIRED_ENV_FILE}"
 }
 
+strip_wrapping_quotes() {
+  local value="$1"
+  value="${value%$'\r'}"
+  if [[ "${value}" =~ ^\"(.*)\"$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+  elif [[ "${value}" =~ ^\'(.*)\'$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+  else
+    printf '%s\n' "${value}"
+  fi
+}
+
 [[ $EUID -eq 0 ]] || die "Run as root."
 [[ "${OWNER_NAME}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || die "Invalid OWNER_NAME: ${OWNER_NAME}"
 
@@ -100,11 +112,11 @@ need_file "${REQUIRED_ENV_FILE}"
 need_file "${REQUIRED_WG_FILE}"
 need_file "${REQUIRED_OWNER_SSH_FILE}"
 
-BASE_DOMAIN="$(parse_env_value BASE_DOMAIN || true)"
-OPENAI_API_MODEL="$(parse_env_value OPENAI_API_MODEL || true)"
-OPENAI_API_KEY="$(parse_env_value OPENAI_API_KEY || true)"
-OPENAI_API_BASE="$(parse_env_value OPENAI_API_BASE || true | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")"
-OPENCLAW_CONTEXT_WINDOW="$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)"
+BASE_DOMAIN="$(strip_wrapping_quotes "$(parse_env_value BASE_DOMAIN || true)")"
+OPENAI_API_MODEL="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL || true)")"
+OPENAI_API_KEY="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_KEY || true)")"
+OPENAI_API_BASE="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_BASE || true)")"
+OPENCLAW_CONTEXT_WINDOW="$(strip_wrapping_quotes "$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)")"
 
 [[ -n "${BASE_DOMAIN}" ]] || die "Missing BASE_DOMAIN in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_MODEL}" ]] || die "Missing OPENAI_API_MODEL in ${REQUIRED_ENV_FILE}"
