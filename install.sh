@@ -75,6 +75,7 @@ parse_env_value() {
     /^[[:space:]]*$/ {next}
     {
       kk=$1
+      sub(/^[[:space:]]*export[[:space:]]+/, "", kk)
       sub(/^[[:space:]]+/, "", kk)
       sub(/[[:space:]]+$/, "", kk)
       if (kk==k) {
@@ -155,6 +156,7 @@ parse_env_value() {
     /^[[:space:]]*$/ {next}
     {
       kk=$1
+      sub(/^[[:space:]]*export[[:space:]]+/, "", kk)
       sub(/^[[:space:]]+/, "", kk)
       sub(/[[:space:]]+$/, "", kk)
       if (kk==k) {
@@ -358,8 +360,15 @@ EON
   apt-get install -y nodejs
 fi
 
+install -d -m 0755 /etc/skel/.config/openclaw
+install -d -m 0755 /etc/skel/.config/opencode
+touch /etc/skel/.profile
+grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.profile
+grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.profile
+grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> /etc/skel/.profile
+
 if ! id -u "${OPENCLAW_USER}" >/dev/null 2>&1; then
-  useradd -m -s /bin/bash "${OPENCLAW_USER}"
+  useradd -m -k /etc/skel -s /bin/bash "${OPENCLAW_USER}"
 fi
 
 usermod -aG sudo "${OPENCLAW_USER}"
@@ -369,13 +378,6 @@ cat > "/etc/sudoers.d/90-${OPENCLAW_USER}" <<EOS
 ${OPENCLAW_USER} ALL=(ALL) NOPASSWD:ALL
 EOS
 chmod 0440 "/etc/sudoers.d/90-${OPENCLAW_USER}"
-
-install -d -m 0755 /etc/skel/.config/openclaw
-install -d -m 0755 /etc/skel/.config/opencode
-touch /etc/skel/.profile
-grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.profile
-grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.profile
-grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> /etc/skel/.profile
 
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.config/openclaw"
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.config/opencode"
