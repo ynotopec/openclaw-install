@@ -363,9 +363,12 @@ fi
 install -d -m 0755 /etc/skel/.config/openclaw
 install -d -m 0755 /etc/skel/.config/opencode
 touch /etc/skel/.profile
+touch /etc/skel/.bashrc
 grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.profile
 grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.profile
 grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> /etc/skel/.profile
+grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.bashrc || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.bashrc
+grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.bashrc || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.bashrc
 
 if ! id -u "${OPENCLAW_USER}" >/dev/null 2>&1; then
   useradd -m -k /etc/skel -s /bin/bash "${OPENCLAW_USER}"
@@ -388,11 +391,15 @@ chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}"
 chmod 0755 "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "/home/${OPENCLAW_USER}/.npm"
 
 touch "/home/${OPENCLAW_USER}/.profile"
+touch "/home/${OPENCLAW_USER}/.bashrc"
 grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> "/home/${OPENCLAW_USER}/.profile"
+grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.bashrc" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.bashrc"
+grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.bashrc" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.bashrc"
 
 chown "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.profile"
+chown "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.bashrc"
 chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.config" "/home/${OPENCLAW_USER}/.openclaw"
 
 if [ -f "/home/${OPENCLAW_USER}/.config/openclaw/.env" ]; then
