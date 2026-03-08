@@ -13,10 +13,10 @@ The script does **not** install or configure LXC on host.
 
 ## Required files
 
-- `/root/openclaw-env/.env`
-- `/root/openclaw-env/wireguard_vpn.conf`
-- `/root/openclaw-env/owner-ssh.pub`
-- `/root/openclaw-env/.kubeconfig` (optional)
+- `/root/openclaw-install-${OWNER_NAME}/.env`
+- `/root/openclaw-install-${OWNER_NAME}/wireguard_vpn.conf`
+- `/root/openclaw-install-${OWNER_NAME}/owner-ssh.pub`
+- `/root/openclaw-install-${OWNER_NAME}/.kubeconfig` (optional)
 
 ## Required `.env`
 
@@ -56,13 +56,13 @@ or
 
 ## Generated host files
 
-* `/root/openclaw-env/generated/openclaw.env`
-* `/root/openclaw-env/generated/wg0.conf`
-* `/root/openclaw-env/generated/authorized_keys`
-* `/root/openclaw-env/generated/env.sh`
-* `/root/openclaw-env/generated/openclaw.json`
-* `/root/openclaw-env/generated/opencode.json`
-* `/root/openclaw-env/generated/container-install.sh`
+* `/root/openclaw-install-${OWNER_NAME}/generated/openclaw.env`
+* `/root/openclaw-install-${OWNER_NAME}/generated/wg0.conf`
+* `/root/openclaw-install-${OWNER_NAME}/generated/authorized_keys`
+* `/root/openclaw-install-${OWNER_NAME}/generated/env.sh`
+* `/root/openclaw-install-${OWNER_NAME}/generated/openclaw.json`
+* `/root/openclaw-install-${OWNER_NAME}/generated/opencode.json`
+* `/root/openclaw-install-${OWNER_NAME}/generated/container-install.sh`
 
 ## Main files inside container
 
