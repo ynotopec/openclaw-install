@@ -215,14 +215,14 @@ jq -n \
       mode: "replace",
       providers: {
         "custom-openai": {
-          api: "openai-chat-completions",
+          api: "openai-completions",
           baseUrl: $base,
           apiKey: $key,
           models: [
             {
               id: ("custom-openai/" + $model),
               name: ("custom-openai/" + $model),
-              api: "openai-chat-completions",
+              api: "openai-completions",
               contextWindow: $context
             }
           ]
@@ -232,7 +232,6 @@ jq -n \
     agents: {
       defaults: {
         model: ("custom-openai/" + $model),
-        models: [("custom-openai/" + $model)],
         contextTokens: $context
       }
     }
@@ -273,14 +272,14 @@ cat > "${GENERATED_DIR}/openclaw.json" <<EOF
     "mode": "replace",
     "providers": {
       "custom-openai": {
-        "api": "openai-chat-completions",
+        "api": "openai-completions",
         "baseUrl": "${OPENAI_API_BASE}",
         "apiKey": "${OPENAI_API_KEY}",
         "models": [
           {
             "id": "custom-openai/${OPENAI_API_MODEL}",
             "name": "custom-openai/${OPENAI_API_MODEL}",
-            "api": "openai-chat-completions",
+            "api": "openai-completions",
             "contextWindow": ${OPENCLAW_CONTEXT_WINDOW}
           }
         ]
@@ -290,9 +289,6 @@ cat > "${GENERATED_DIR}/openclaw.json" <<EOF
   "agents": {
     "defaults": {
       "model": "custom-openai/${OPENAI_API_MODEL}",
-      "models": [
-        "custom-openai/${OPENAI_API_MODEL}"
-      ],
       "contextTokens": ${OPENCLAW_CONTEXT_WINDOW}
     }
   }
