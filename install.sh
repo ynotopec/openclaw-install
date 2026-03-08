@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ENV_DIR="${ENV_DIR:-/root/openclaw-env}"
 OWNER_NAME="${OWNER_NAME:-${1:-ynotopec}}"
+ENV_DIR="${ENV_DIR:-/root/openclaw-install-${OWNER_NAME}}"
 OPENCLAW_USER="${OPENCLAW_USER:-openclaw}"
 
 REQUIRED_ENV_FILE="${ENV_DIR}/.env"
