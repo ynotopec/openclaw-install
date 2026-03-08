@@ -26,3 +26,51 @@ OPENAI_API_MODEL=gpt-4.1-mini
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://your-openai-compatible-endpoint/v1
 OPENCLAW_CONTEXT_WINDOW=128000
+````
+
+## What it does
+
+* creates or reuses a real LXC container
+* enables `/dev/net/tun` in container config
+* copies prepared files into container rootfs
+* installs SSH server and WireGuard client
+* adds owner SSH public key to `root`
+* creates `openclaw` sudo user without password
+* installs Node.js 22
+* installs OpenCode and OpenClaw for `openclaw`
+* writes explicit LLM config for OpenCode and OpenClaw
+* copies optional kubeconfig
+
+## Run
+
+```bash
+chmod +x install.sh
+OWNER_NAME=ynotopec ./install.sh
+```
+
+or
+
+```bash
+./install.sh ynotopec
+```
+
+## Generated host files
+
+* `/root/openclaw-env/generated/openclaw.env`
+* `/root/openclaw-env/generated/wg0.conf`
+* `/root/openclaw-env/generated/authorized_keys`
+* `/root/openclaw-env/generated/env.sh`
+* `/root/openclaw-env/generated/openclaw.json`
+* `/root/openclaw-env/generated/opencode.json`
+* `/root/openclaw-env/generated/container-install.sh`
+
+## Main files inside container
+
+* `/root/.ssh/authorized_keys`
+* `/etc/wireguard/wg0.conf`
+* `/root/container-install.sh`
+* `/home/openclaw/.config/openclaw/.env`
+* `/home/openclaw/.config/openclaw/env.sh`
+* `/home/openclaw/.openclaw/openclaw.json`
+* `/home/openclaw/.config/opencode/opencode.json`
+* `/home/openclaw/.kube/config` (optional)
