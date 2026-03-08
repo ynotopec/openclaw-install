@@ -85,6 +85,17 @@ parse_env_value() {
   ' "${REQUIRED_ENV_FILE}"
 }
 
+strip_wrapping_quotes() {
+  local value="$1"
+  value="${value%$'\r'}"
+  if [[ ${#value} -ge 2 && ${value:0:1} == '"' && ${value: -1} == '"' ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ ${#value} -ge 2 && ${value:0:1} == "'" && ${value: -1} == "'" ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s\n' "${value}"
+}
+
 [[ $EUID -eq 0 ]] || die "Run as root."
 [[ "${OWNER_NAME}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || die "Invalid OWNER_NAME: ${OWNER_NAME}"
 
@@ -100,17 +111,18 @@ need_file "${REQUIRED_ENV_FILE}"
 need_file "${REQUIRED_WG_FILE}"
 need_file "${REQUIRED_OWNER_SSH_FILE}"
 
-BASE_DOMAIN="$(parse_env_value BASE_DOMAIN || true)"
-OPENAI_API_MODEL="$(parse_env_value OPENAI_API_MODEL || true)"
-OPENAI_API_KEY="$(parse_env_value OPENAI_API_KEY || true)"
-OPENAI_API_BASE="$(parse_env_value OPENAI_API_BASE || true | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")"
-OPENCLAW_CONTEXT_WINDOW="$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)"
+BASE_DOMAIN="$(strip_wrapping_quotes "$(parse_env_value BASE_DOMAIN || true)")"
+OPENAI_API_MODEL="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL || true)")"
+OPENAI_API_KEY="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_KEY || true)")"
+OPENAI_API_BASE="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_BASE || true)")"
+OPENCLAW_CONTEXT_WINDOW="$(strip_wrapping_quotes "$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)")"
 
 [[ -n "${BASE_DOMAIN}" ]] || die "Missing BASE_DOMAIN in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_MODEL}" ]] || die "Missing OPENAI_API_MODEL in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_KEY}" ]] || die "Missing OPENAI_API_KEY in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_BASE}" ]] || die "Missing OPENAI_API_BASE in ${REQUIRED_ENV_FILE}"
 OPENCLAW_CONTEXT_WINDOW="${OPENCLAW_CONTEXT_WINDOW:-128000}"
+[[ "${OPENCLAW_CONTEXT_WINDOW}" =~ ^[0-9]+$ ]] || OPENCLAW_CONTEXT_WINDOW="128000"
 
 mkdir -p "${GENERATED_DIR}"
 
@@ -126,6 +138,133 @@ set -a
 [ -f "$HOME/.config/openclaw/.env" ] && . "$HOME/.config/openclaw/.env"
 set +a
 export PATH="$HOME/.local/bin:$PATH"
+EOF
+
+cat > "${GENERATED_DIR}/sync-config.sh" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ENV_FILE="$HOME/.config/openclaw/.env"
+OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
+OPENCODE_CONFIG="$HOME/.config/opencode/opencode.json"
+
+parse_env_value() {
+  local key="$1"
+  awk -F= -v k="$key" '
+    /^[[:space:]]*#/ {next}
+    /^[[:space:]]*$/ {next}
+    {
+      kk=$1
+      sub(/^[[:space:]]+/, "", kk)
+      sub(/[[:space:]]+$/, "", kk)
+      if (kk==k) {
+        print substr($0, index($0, "=")+1)
+        exit
+      }
+    }
+  ' "$ENV_FILE"
+}
+
+strip_wrapping_quotes() {
+  local value="$1"
+  value="${value%$'\r'}"
+  if [[ ${#value} -ge 2 && ${value:0:1} == '"' && ${value: -1} == '"' ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ ${#value} -ge 2 && ${value:0:1} == "'" && ${value: -1} == "'" ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s\n' "${value}"
+}
+
+write_if_changed() {
+  local target="$1"
+  local tmp="$2"
+  if [ ! -f "$target" ] || ! cmp -s "$tmp" "$target"; then
+    mv "$tmp" "$target"
+  else
+    rm -f "$tmp"
+  fi
+}
+
+[ -f "$ENV_FILE" ] || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+
+OPENAI_API_MODEL="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL || true)")"
+OPENAI_API_KEY="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_KEY || true)")"
+OPENAI_API_BASE="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_BASE || true)")"
+OPENCLAW_CONTEXT_WINDOW="$(strip_wrapping_quotes "$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)")"
+OPENCLAW_CONTEXT_WINDOW="${OPENCLAW_CONTEXT_WINDOW:-128000}"
+[[ "$OPENCLAW_CONTEXT_WINDOW" =~ ^[0-9]+$ ]] || OPENCLAW_CONTEXT_WINDOW="128000"
+
+if [[ -z "$OPENAI_API_MODEL" || -z "$OPENAI_API_KEY" || -z "$OPENAI_API_BASE" ]]; then
+  exit 0
+fi
+
+install -d -m 0755 "$HOME/.openclaw" "$HOME/.config/opencode"
+
+openclaw_tmp="$(mktemp)"
+opencode_tmp="$(mktemp)"
+
+jq -n \
+  --arg base "$OPENAI_API_BASE" \
+  --arg key "$OPENAI_API_KEY" \
+  --arg model "$OPENAI_API_MODEL" \
+  --argjson context "$OPENCLAW_CONTEXT_WINDOW" \
+  '{
+    models: {
+      mode: "replace",
+      providers: {
+        "custom-openai": {
+          api: "openai-chat-completions",
+          baseUrl: $base,
+          apiKey: $key,
+          models: [
+            {
+              id: ("custom-openai/" + $model),
+              name: ("custom-openai/" + $model),
+              api: "openai-chat-completions",
+              contextWindow: $context
+            }
+          ]
+        }
+      }
+    },
+    agents: {
+      defaults: {
+        model: ("custom-openai/" + $model),
+        models: [("custom-openai/" + $model)],
+        contextTokens: $context
+      }
+    }
+  }' > "$openclaw_tmp"
+
+jq -n \
+  --arg model "$OPENAI_API_MODEL" \
+  --arg base "$OPENAI_API_BASE" \
+  '{
+    "$schema": "https://opencode.ai/config.json",
+    model: ("custom-openai/" + $model),
+    provider: {
+      "custom-openai": {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Custom OpenAI Compatible",
+        options: {
+          baseURL: $base,
+          apiKey: "{env:OPENAI_API_KEY}"
+        },
+        models: {
+          ($model): {
+            name: $model
+          }
+        }
+      }
+    }
+  }' > "$opencode_tmp"
+
+write_if_changed "$OPENCLAW_CONFIG" "$openclaw_tmp"
+write_if_changed "$OPENCODE_CONFIG" "$opencode_tmp"
+
+chmod 644 "$OPENCLAW_CONFIG" "$OPENCODE_CONFIG"
 EOF
 
 cat > "${GENERATED_DIR}/openclaw.json" <<EOF
@@ -240,6 +379,7 @@ install -d -m 0755 /etc/skel/.config/opencode
 touch /etc/skel/.profile
 grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.profile
 grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.profile
+grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> /etc/skel/.profile
 
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.config/openclaw"
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.config/opencode"
@@ -252,6 +392,7 @@ chmod 0755 "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "
 touch "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.profile"
+grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> "/home/${OPENCLAW_USER}/.profile"
 
 chown "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.profile"
 chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.config" "/home/${OPENCLAW_USER}/.openclaw"
@@ -261,6 +402,9 @@ if [ -f "/home/${OPENCLAW_USER}/.config/openclaw/.env" ]; then
 fi
 if [ -f "/home/${OPENCLAW_USER}/.config/openclaw/env.sh" ]; then
   chmod 644 "/home/${OPENCLAW_USER}/.config/openclaw/env.sh"
+fi
+if [ -f "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh" ]; then
+  chmod 755 "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh"
 fi
 if [ -f "/home/${OPENCLAW_USER}/.openclaw/openclaw.json" ]; then
   chmod 644 "/home/${OPENCLAW_USER}/.openclaw/openclaw.json"
@@ -298,6 +442,7 @@ EOF
 
 chmod 600 "${GENERATED_DIR}/openclaw.env" "${GENERATED_DIR}/wg0.conf"
 chmod 644 "${GENERATED_DIR}/env.sh" "${GENERATED_DIR}/openclaw.json" "${GENERATED_DIR}/opencode.json"
+chmod 755 "${GENERATED_DIR}/sync-config.sh"
 chmod 600 "${GENERATED_DIR}/authorized_keys"
 chmod 755 "${GENERATED_DIR}/container-install.sh"
 
@@ -316,6 +461,7 @@ install_rootfs_file "${GENERATED_DIR}/authorized_keys" "/root/.ssh/authorized_ke
 install_rootfs_file "${GENERATED_DIR}/wg0.conf" "/etc/wireguard/wg0.conf" 0600
 install_rootfs_file "${GENERATED_DIR}/openclaw.env" "/home/${OPENCLAW_USER}/.config/openclaw/.env" 0600
 install_rootfs_file "${GENERATED_DIR}/env.sh" "/home/${OPENCLAW_USER}/.config/openclaw/env.sh" 0644
+install_rootfs_file "${GENERATED_DIR}/sync-config.sh" "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh" 0755
 install_rootfs_file "${GENERATED_DIR}/openclaw.json" "/home/${OPENCLAW_USER}/.openclaw/openclaw.json" 0644
 install_rootfs_file "${GENERATED_DIR}/opencode.json" "/home/${OPENCLAW_USER}/.config/opencode/opencode.json" 0644
 install_rootfs_file "${GENERATED_DIR}/container-install.sh" "/root/container-install.sh" 0755
@@ -359,6 +505,7 @@ echo "  ${GENERATED_DIR}/openclaw.env"
 echo "  ${GENERATED_DIR}/wg0.conf"
 echo "  ${GENERATED_DIR}/authorized_keys"
 echo "  ${GENERATED_DIR}/env.sh"
+echo "  ${GENERATED_DIR}/sync-config.sh"
 echo "  ${GENERATED_DIR}/openclaw.json"
 echo "  ${GENERATED_DIR}/opencode.json"
 echo "  ${GENERATED_DIR}/container-install.sh"
