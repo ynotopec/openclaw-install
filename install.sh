@@ -103,7 +103,7 @@ need_file "${REQUIRED_OWNER_SSH_FILE}"
 BASE_DOMAIN="$(parse_env_value BASE_DOMAIN || true)"
 OPENAI_API_MODEL="$(parse_env_value OPENAI_API_MODEL || true)"
 OPENAI_API_KEY="$(parse_env_value OPENAI_API_KEY || true)"
-OPENAI_API_BASE="$(parse_env_value OPENAI_API_BASE || true)"
+OPENAI_API_BASE="$(parse_env_value OPENAI_API_BASE || true | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")"
 OPENCLAW_CONTEXT_WINDOW="$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)"
 
 [[ -n "${BASE_DOMAIN}" ]] || die "Missing BASE_DOMAIN in ${REQUIRED_ENV_FILE}"
@@ -245,6 +245,10 @@ install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.config/opencode"
 install -d -o "${OPENCLAW_USER}" -g "${OPENCLAW_USER}" -m 0755 "/home/${OPENCLAW_USER}/.openclaw"
 
+mkdir -p "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "/home/${OPENCLAW_USER}/.npm"
+chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}"
+chmod 0755 "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "/home/${OPENCLAW_USER}/.npm"
+
 touch "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.profile"
 grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.profile"
@@ -283,7 +287,6 @@ systemctl restart wg-quick@wg0 || true
 
 su - "${OPENCLAW_USER}" -c '
   set -Eeuo pipefail
-  mkdir -p "$HOME/.local/bin"
   npm config set prefix "$HOME/.local"
   export PATH="$HOME/.local/bin:$PATH"
   npm install -g opencode-ai
