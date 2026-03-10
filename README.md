@@ -39,6 +39,7 @@ OPENCLAW_CONTEXT_WINDOW=128000
 * installs Node.js 22
 * installs OpenCode and OpenClaw for `openclaw`
 * writes explicit LLM config for OpenCode and OpenClaw
+* syncs OpenCode/OpenClaw configs from `~/.config/openclaw/.env` at login
 * copies optional kubeconfig
 
 ## Run
@@ -60,6 +61,7 @@ or
 * `/root/openclaw-install-${OWNER_NAME}/generated/wg0.conf`
 * `/root/openclaw-install-${OWNER_NAME}/generated/authorized_keys`
 * `/root/openclaw-install-${OWNER_NAME}/generated/env.sh`
+* `/root/openclaw-install-${OWNER_NAME}/generated/sync-config.sh`
 * `/root/openclaw-install-${OWNER_NAME}/generated/openclaw.json`
 * `/root/openclaw-install-${OWNER_NAME}/generated/opencode.json`
 * `/root/openclaw-install-${OWNER_NAME}/generated/container-install.sh`
@@ -71,6 +73,7 @@ or
 * `/root/container-install.sh`
 * `/home/openclaw/.config/openclaw/.env`
 * `/home/openclaw/.config/openclaw/env.sh`
+* `/home/openclaw/.config/openclaw/sync-config.sh`
 * `/home/openclaw/.openclaw/openclaw.json`
 * `/home/openclaw/.config/opencode/opencode.json`
 * `/home/openclaw/.kube/config` (optional)
