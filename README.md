@@ -25,7 +25,7 @@ BASE_DOMAIN=example.com
 OPENAI_API_MODEL=gpt-4.1-mini
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://your-openai-compatible-endpoint/v1
-OPENCLAW_CONTEXT_WINDOW=128000
+OPENAI_API_MODEL_CONTEXT=200000
 ````
 
 ## What it does
