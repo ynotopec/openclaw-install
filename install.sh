@@ -116,14 +116,14 @@ BASE_DOMAIN="$(strip_wrapping_quotes "$(parse_env_value BASE_DOMAIN || true)")"
 OPENAI_API_MODEL="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL || true)")"
 OPENAI_API_KEY="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_KEY || true)")"
 OPENAI_API_BASE="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_BASE || true)")"
-OPENCLAW_CONTEXT_WINDOW="$(strip_wrapping_quotes "$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)")"
+OPENAI_API_MODEL_CONTEXT="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL_CONTEXT || true)")"
 
 [[ -n "${BASE_DOMAIN}" ]] || die "Missing BASE_DOMAIN in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_MODEL}" ]] || die "Missing OPENAI_API_MODEL in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_KEY}" ]] || die "Missing OPENAI_API_KEY in ${REQUIRED_ENV_FILE}"
 [[ -n "${OPENAI_API_BASE}" ]] || die "Missing OPENAI_API_BASE in ${REQUIRED_ENV_FILE}"
-OPENCLAW_CONTEXT_WINDOW="${OPENCLAW_CONTEXT_WINDOW:-128000}"
-[[ "${OPENCLAW_CONTEXT_WINDOW}" =~ ^[0-9]+$ ]] || OPENCLAW_CONTEXT_WINDOW="128000"
+OPENAI_API_MODEL_CONTEXT="${OPENAI_API_MODEL_CONTEXT:-200000}"
+[[ "${OPENAI_API_MODEL_CONTEXT}" =~ ^[0-9]+$ ]] || OPENAI_API_MODEL_CONTEXT="200000"
 
 mkdir -p "${GENERATED_DIR}"
 
@@ -194,9 +194,9 @@ command -v jq >/dev/null 2>&1 || exit 0
 OPENAI_API_MODEL="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL || true)")"
 OPENAI_API_KEY="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_KEY || true)")"
 OPENAI_API_BASE="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_BASE || true)")"
-OPENCLAW_CONTEXT_WINDOW="$(strip_wrapping_quotes "$(parse_env_value OPENCLAW_CONTEXT_WINDOW || true)")"
-OPENCLAW_CONTEXT_WINDOW="${OPENCLAW_CONTEXT_WINDOW:-128000}"
-[[ "$OPENCLAW_CONTEXT_WINDOW" =~ ^[0-9]+$ ]] || OPENCLAW_CONTEXT_WINDOW="128000"
+OPENAI_API_MODEL_CONTEXT="$(strip_wrapping_quotes "$(parse_env_value OPENAI_API_MODEL_CONTEXT || true)")"
+OPENAI_API_MODEL_CONTEXT="${OPENAI_API_MODEL_CONTEXT:-200000}"
+[[ "$OPENAI_API_MODEL_CONTEXT" =~ ^[0-9]+$ ]] || OPENAI_API_MODEL_CONTEXT="200000"
 
 if [[ -z "$OPENAI_API_MODEL" || -z "$OPENAI_API_KEY" || -z "$OPENAI_API_BASE" ]]; then
   exit 0
@@ -211,7 +211,7 @@ jq -n \
   --arg base "$OPENAI_API_BASE" \
   --arg key "$OPENAI_API_KEY" \
   --arg model "$OPENAI_API_MODEL" \
-  --argjson context "$OPENCLAW_CONTEXT_WINDOW" \
+  --argjson context "$OPENAI_API_MODEL_CONTEXT" \
   '{
     models: {
       mode: "replace",
@@ -283,7 +283,7 @@ cat > "${GENERATED_DIR}/openclaw.json" <<EOF
             "id": "custom-openai/${OPENAI_API_MODEL}",
             "name": "custom-openai/${OPENAI_API_MODEL}",
             "api": "openai-completions",
-            "contextWindow": ${OPENCLAW_CONTEXT_WINDOW}
+            "contextWindow": ${OPENAI_API_MODEL_CONTEXT}
           }
         ]
       }
@@ -292,7 +292,7 @@ cat > "${GENERATED_DIR}/openclaw.json" <<EOF
   "agents": {
     "defaults": {
       "model": "custom-openai/${OPENAI_API_MODEL}",
-      "contextTokens": ${OPENCLAW_CONTEXT_WINDOW}
+      "contextTokens": ${OPENAI_API_MODEL_CONTEXT}
     }
   }
 }
