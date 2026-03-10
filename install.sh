@@ -265,7 +265,8 @@ jq -n \
 write_if_changed "$OPENCLAW_CONFIG" "$openclaw_tmp"
 write_if_changed "$OPENCODE_CONFIG" "$opencode_tmp"
 
-chmod 644 "$OPENCLAW_CONFIG" "$OPENCODE_CONFIG"
+# Secure API keys
+chmod 600 "$OPENCLAW_CONFIG" "$OPENCODE_CONFIG"
 EOF
 
 cat > "${GENERATED_DIR}/openclaw.json" <<EOF
@@ -326,6 +327,16 @@ set -Eeuo pipefail
 OPENCLAW_USER="${OPENCLAW_USER:-openclaw}"
 export DEBIAN_FRONTEND=noninteractive
 
+# Helper to safely append text without mangling files missing a trailing newline
+append_if_missing() {
+  local line="$1" file="$2"
+  touch "$file"
+  if ! grep -Fqx "$line" "$file"; then
+    [ -n "$(tail -c 1 "$file")" ] && echo >> "$file"
+    printf '%s\n' "$line" >> "$file"
+  fi
+}
+
 apt-get update -y
 apt-get install -y \
   sudo openssh-server wireguard wireguard-tools \
@@ -362,16 +373,17 @@ fi
 
 install -d -m 0755 /etc/skel/.config/openclaw
 install -d -m 0755 /etc/skel/.config/opencode
-touch /etc/skel/.profile
-touch /etc/skel/.bashrc
-grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.profile
-grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.profile
-grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> /etc/skel/.profile
-grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.bashrc || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/skel/.bashrc
-grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.bashrc || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> /etc/skel/.bashrc
+append_if_missing 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.profile
+append_if_missing '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.profile
+append_if_missing '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' /etc/skel/.profile
+append_if_missing 'export PATH="$HOME/.local/bin:$PATH"' /etc/skel/.bashrc
+append_if_missing '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' /etc/skel/.bashrc
 
 if ! id -u "${OPENCLAW_USER}" >/dev/null 2>&1; then
-  useradd -m -k /etc/skel -s /bin/bash "${OPENCLAW_USER}"
+  useradd -m -k /etc/skel -s /bin/bash "${OPENCLAW_USER}" || true
+  # Force copy skeleton files since host install scripts may have created the homedir early
+  cp -rn /etc/skel/. "/home/${OPENCLAW_USER}/" 2>/dev/null || true
+  chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}"
 fi
 
 usermod -aG sudo "${OPENCLAW_USER}"
@@ -390,13 +402,11 @@ mkdir -p "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "/h
 chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}"
 chmod 0755 "/home/${OPENCLAW_USER}/.local" "/home/${OPENCLAW_USER}/.local/bin" "/home/${OPENCLAW_USER}/.npm"
 
-touch "/home/${OPENCLAW_USER}/.profile"
-touch "/home/${OPENCLAW_USER}/.bashrc"
-grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.profile"
-grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.profile"
-grep -Fqx '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' "/home/${OPENCLAW_USER}/.profile" || printf '%s\n' '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' >> "/home/${OPENCLAW_USER}/.profile"
-grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.bashrc" || printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "/home/${OPENCLAW_USER}/.bashrc"
-grep -Fqx '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.bashrc" || printf '%s\n' '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' >> "/home/${OPENCLAW_USER}/.bashrc"
+append_if_missing 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.profile"
+append_if_missing '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.profile"
+append_if_missing '[ -x "$HOME/.config/openclaw/sync-config.sh" ] && "$HOME/.config/openclaw/sync-config.sh"' "/home/${OPENCLAW_USER}/.profile"
+append_if_missing 'export PATH="$HOME/.local/bin:$PATH"' "/home/${OPENCLAW_USER}/.bashrc"
+append_if_missing '[ -f "$HOME/.config/openclaw/env.sh" ] && . "$HOME/.config/openclaw/env.sh"' "/home/${OPENCLAW_USER}/.bashrc"
 
 chown "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.profile"
 chown "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.bashrc"
@@ -412,10 +422,16 @@ if [ -f "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh" ]; then
   chmod 755 "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh"
 fi
 if [ -f "/home/${OPENCLAW_USER}/.openclaw/openclaw.json" ]; then
-  chmod 644 "/home/${OPENCLAW_USER}/.openclaw/openclaw.json"
+  chmod 600 "/home/${OPENCLAW_USER}/.openclaw/openclaw.json"
 fi
 if [ -f "/home/${OPENCLAW_USER}/.config/opencode/opencode.json" ]; then
-  chmod 644 "/home/${OPENCLAW_USER}/.config/opencode/opencode.json"
+  chmod 600 "/home/${OPENCLAW_USER}/.config/opencode/opencode.json"
+fi
+
+if [ -d "/home/${OPENCLAW_USER}/.ssh" ]; then
+  chown -R "${OPENCLAW_USER}:${OPENCLAW_USER}" "/home/${OPENCLAW_USER}/.ssh"
+  chmod 700 "/home/${OPENCLAW_USER}/.ssh"
+  [ -f "/home/${OPENCLAW_USER}/.ssh/authorized_keys" ] && chmod 600 "/home/${OPENCLAW_USER}/.ssh/authorized_keys"
 fi
 
 if [ -f "/home/${OPENCLAW_USER}/.kube/config" ]; then
@@ -432,7 +448,7 @@ chown root:root /root/.ssh /root/.ssh/authorized_keys
 
 chmod 600 /etc/wireguard/wg0.conf
 systemctl enable wg-quick@wg0
-systemctl restart wg-quick@wg0 || true
+systemctl restart wg-quick@wg0 || echo "WARNING: Failed to start wg-quick@wg0" >&2
 
 su - "${OPENCLAW_USER}" -c '
   set -Eeuo pipefail
@@ -446,7 +462,8 @@ su - "${OPENCLAW_USER}" -c '
 EOF
 
 chmod 600 "${GENERATED_DIR}/openclaw.env" "${GENERATED_DIR}/wg0.conf"
-chmod 644 "${GENERATED_DIR}/env.sh" "${GENERATED_DIR}/openclaw.json" "${GENERATED_DIR}/opencode.json"
+chmod 644 "${GENERATED_DIR}/env.sh"
+chmod 600 "${GENERATED_DIR}/openclaw.json" "${GENERATED_DIR}/opencode.json"
 chmod 755 "${GENERATED_DIR}/sync-config.sh"
 chmod 600 "${GENERATED_DIR}/authorized_keys"
 chmod 755 "${GENERATED_DIR}/container-install.sh"
@@ -463,12 +480,13 @@ ensure_lxc_config_line "${CONFIG_FILE}" "lxc.mount.entry = /dev/net/tun dev/net/
 
 log "Copying files into container rootfs"
 install_rootfs_file "${GENERATED_DIR}/authorized_keys" "/root/.ssh/authorized_keys" 0600
+install_rootfs_file "${GENERATED_DIR}/authorized_keys" "/home/${OPENCLAW_USER}/.ssh/authorized_keys" 0600
 install_rootfs_file "${GENERATED_DIR}/wg0.conf" "/etc/wireguard/wg0.conf" 0600
 install_rootfs_file "${GENERATED_DIR}/openclaw.env" "/home/${OPENCLAW_USER}/.config/openclaw/.env" 0600
 install_rootfs_file "${GENERATED_DIR}/env.sh" "/home/${OPENCLAW_USER}/.config/openclaw/env.sh" 0644
 install_rootfs_file "${GENERATED_DIR}/sync-config.sh" "/home/${OPENCLAW_USER}/.config/openclaw/sync-config.sh" 0755
-install_rootfs_file "${GENERATED_DIR}/openclaw.json" "/home/${OPENCLAW_USER}/.openclaw/openclaw.json" 0644
-install_rootfs_file "${GENERATED_DIR}/opencode.json" "/home/${OPENCLAW_USER}/.config/opencode/opencode.json" 0644
+install_rootfs_file "${GENERATED_DIR}/openclaw.json" "/home/${OPENCLAW_USER}/.openclaw/openclaw.json" 0600
+install_rootfs_file "${GENERATED_DIR}/opencode.json" "/home/${OPENCLAW_USER}/.config/opencode/opencode.json" 0600
 install_rootfs_file "${GENERATED_DIR}/container-install.sh" "/root/container-install.sh" 0755
 
 if [[ -f "${OPTIONAL_KUBECONFIG}" ]]; then
@@ -483,7 +501,10 @@ else
 fi
 
 IP="$(wait_for_ip 90 || true)"
-[[ -n "${IP:-}" ]] && log "Container IP: ${IP}" || warn "Container IP not detected"
+if [[ -z "${IP:-}" ]]; then
+  die "Container failed to acquire an IP address. Aborting installation."
+fi
+log "Container IP: ${IP}"
 
 log "Running container installer"
 lxc-attach -n "${CONTAINER_NAME}" -- env OPENCLAW_USER="${OPENCLAW_USER}" bash /root/container-install.sh
