@@ -38,6 +38,7 @@ OPENAI_API_MODEL_CONTEXT=200000
 * creates `openclaw` sudo user without password
 * installs Node.js 22
 * installs OpenCode and OpenClaw for `openclaw`
+  * reruns are idempotent and update existing global npm installs instead of reinstalling blindly
 * writes explicit LLM config for OpenCode and OpenClaw
 * syncs OpenCode/OpenClaw configs from `~/.config/openclaw/.env` at login
   * OpenCode sync now preserves existing user settings and only updates `model` plus `provider.custom-openai`
