@@ -40,6 +40,7 @@ OPENAI_API_MODEL_CONTEXT=200000
 * installs OpenCode and OpenClaw for `openclaw`
 * writes explicit LLM config for OpenCode and OpenClaw
 * syncs OpenCode/OpenClaw configs from `~/.config/openclaw/.env` at login
+  * OpenCode sync now preserves existing user settings and only updates `model` plus `provider.custom-openai`
 * copies optional kubeconfig
 
 ## Run

@@ -239,14 +239,15 @@ jq -n \
     }
   }' > "$openclaw_tmp"
 
-jq -n \
-  --arg model "$OPENAI_API_MODEL" \
-  --arg base "$OPENAI_API_BASE" \
-  '{
-    "$schema": "https://opencode.ai/config.json",
-    model: ("custom-openai/" + $model),
-    provider: {
-      "custom-openai": {
+if [[ -f "$OPENCODE_CONFIG" ]] && jq empty "$OPENCODE_CONFIG" >/dev/null 2>&1; then
+  jq \
+    --arg model "$OPENAI_API_MODEL" \
+    --arg base "$OPENAI_API_BASE" \
+    '
+    ."$schema" = (."$schema" // "https://opencode.ai/config.json")
+    | .model = ("custom-openai/" + $model)
+    | .provider = (.provider // {})
+    | .provider["custom-openai"] = {
         npm: "@ai-sdk/openai-compatible",
         name: "Custom OpenAI Compatible",
         options: {
@@ -259,8 +260,31 @@ jq -n \
           }
         }
       }
-    }
-  }' > "$opencode_tmp"
+    ' "$OPENCODE_CONFIG" > "$opencode_tmp"
+else
+  jq -n \
+    --arg model "$OPENAI_API_MODEL" \
+    --arg base "$OPENAI_API_BASE" \
+    '{
+      "$schema": "https://opencode.ai/config.json",
+      model: ("custom-openai/" + $model),
+      provider: {
+        "custom-openai": {
+          npm: "@ai-sdk/openai-compatible",
+          name: "Custom OpenAI Compatible",
+          options: {
+            baseURL: $base,
+            apiKey: "{env:OPENAI_API_KEY}"
+          },
+          models: {
+            ($model): {
+              name: $model
+            }
+          }
+        }
+      }
+    }' > "$opencode_tmp"
+fi
 
 write_if_changed "$OPENCLAW_CONFIG" "$openclaw_tmp"
 write_if_changed "$OPENCODE_CONFIG" "$opencode_tmp"
