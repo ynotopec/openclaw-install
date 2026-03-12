@@ -478,8 +478,16 @@ su - "${OPENCLAW_USER}" -c '
   set -Eeuo pipefail
   npm config set prefix "$HOME/.local"
   export PATH="$HOME/.local/bin:$PATH"
-  npm install -g opencode-ai
-  npm install -g openclaw@latest
+  if npm list -g --depth=0 opencode-ai >/dev/null 2>&1; then
+    npm update -g opencode-ai
+  else
+    npm install -g opencode-ai
+  fi
+  if npm list -g --depth=0 openclaw >/dev/null 2>&1; then
+    npm update -g openclaw
+  else
+    npm install -g openclaw
+  fi
   command -v opencode >/dev/null
   command -v openclaw >/dev/null
 '
