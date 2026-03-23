@@ -25,7 +25,7 @@ BASE_DOMAIN=example.com
 OPENAI_API_MODEL=gpt-4.1-mini
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://your-openai-compatible-endpoint/v1
-OPENCLAW_CONTEXT_WINDOW=128000
+OPENAI_API_MODEL_CONTEXT=200000
 ````
 
 ## What it does
@@ -38,7 +38,10 @@ OPENCLAW_CONTEXT_WINDOW=128000
 * creates `openclaw` sudo user without password
 * installs Node.js 22
 * installs OpenCode and OpenClaw for `openclaw`
+  * reruns are idempotent and update existing global npm installs instead of reinstalling blindly
 * writes explicit LLM config for OpenCode and OpenClaw
+* syncs OpenCode/OpenClaw configs from `~/.config/openclaw/.env` at login
+  * OpenCode sync now preserves existing user settings and only updates `model` plus `provider.custom-openai`
 * copies optional kubeconfig
 
 ## Run
@@ -60,6 +63,7 @@ or
 * `/root/openclaw-install-${OWNER_NAME}/generated/wg0.conf`
 * `/root/openclaw-install-${OWNER_NAME}/generated/authorized_keys`
 * `/root/openclaw-install-${OWNER_NAME}/generated/env.sh`
+* `/root/openclaw-install-${OWNER_NAME}/generated/sync-config.sh`
 * `/root/openclaw-install-${OWNER_NAME}/generated/openclaw.json`
 * `/root/openclaw-install-${OWNER_NAME}/generated/opencode.json`
 * `/root/openclaw-install-${OWNER_NAME}/generated/container-install.sh`
@@ -71,6 +75,7 @@ or
 * `/root/container-install.sh`
 * `/home/openclaw/.config/openclaw/.env`
 * `/home/openclaw/.config/openclaw/env.sh`
+* `/home/openclaw/.config/openclaw/sync-config.sh`
 * `/home/openclaw/.openclaw/openclaw.json`
 * `/home/openclaw/.config/opencode/opencode.json`
 * `/home/openclaw/.kube/config` (optional)
